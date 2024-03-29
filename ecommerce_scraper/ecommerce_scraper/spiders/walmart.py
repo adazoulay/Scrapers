@@ -1,10 +1,13 @@
 import scrapy
 from scrapy_playwright.page import PageMethod
-from ecommerce_scraper.items import ProductItem
+from ecommerce_scraper.items import ProductItemExpanded
 
 
 #! NOTE:
 #! NEED TO CHANGE RETURNED PRODUCT URL SIZE PARAM FOR FULL SIZE
+#! Enable Proxy
+
+
 class WalmartSpider(scrapy.Spider):
     name = "walmart32"
     start_urls = [
@@ -75,9 +78,56 @@ class WalmartSpider(scrapy.Spider):
                 if src:
                     image_urls_set.add(src)
 
+            product_name_element = await page.query_selector("h1.lh-copy.dark-gray.mv1")
+
+            product_description_elements = await page.query_selector_all(
+                ".dangerous-html"
+            )
+            product_description = []
+            for element in product_description_elements:
+                text = await element.inner_text()
+                product_description.append(text)
+
+            # await page.wait_for_selector( #! Categories never load
+            #     'nav[aria-label="breadcrumb"] a span', timeout=10000
+            # )
+            category_elements = await page.query_selector_all(
+                'nav[aria-label="breadcrumb"] a span'
+            )
+            category_names = [await el.inner_text() for el in category_elements]
+
+            price_element = await page.query_selector('span[itemprop="price"]')
+
+            product_name = (
+                await product_name_element.inner_text()
+                if product_name_element
+                else "N/A"
+            )
+
+            if product_description:
+                product_description = "\n".join(product_description)
+            else:
+                product_description = "N/A"
+
+            category_path = "/".join(category_names)
+
+            product_price = await price_element.inner_text() if price_element else "N/A"
+
+            modified_image_urls = [
+                url.replace("odnHeight=80&odnWidth=80", "odnHeight=612&odnWidth=612")
+                for url in image_urls_set
+            ]
+
             image_urls_list = list(image_urls_set)
             if image_urls_list:
-                yield ProductItem(pdp_url=response.url, image_urls=image_urls_list)
+                yield ProductItemExpanded(
+                    pdp_url=response.url,
+                    image_urls=modified_image_urls,
+                    product_name=product_name,
+                    product_description=product_description,
+                    product_category=category_path,
+                    product_price=product_price,
+                )
             else:
                 self.logger.warning(f"No images found at {response.url}")
         except Exception as e:

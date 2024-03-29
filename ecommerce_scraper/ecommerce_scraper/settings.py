@@ -20,11 +20,12 @@ DOWNLOAD_HANDLERS = {
 TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 PLAYWRIGHT_BROWSER_TYPE = "chromium"
 
+#! Headless Browser
 PLAYWRIGHT_LAUNCH_OPTIONS = {"headless": False}
 
 #! LOGS
-# LOG_ENABLED = True
-# LOG_FILE = "logs.txt"
+LOG_ENABLED = True
+LOG_FILE = "logs.txt"
 LOG_LEVEL = "DEBUG"
 
 #! Image store
@@ -39,6 +40,22 @@ LOG_LEVEL = "DEBUG"
 #         "format": "json",
 #         "encoding": "utf8",
 #         "indent": 4,
+#     },
+# }
+
+# FEEDS = {
+#     "instacart.json": {
+#         "format": "json",
+#         "encoding": "utf8",
+#         "store_empty": False,
+#         "fields": None,
+#         "indent": 4,
+#     },
+#     "instacart.csv": {
+#         "format": "csv",
+#         "encoding": "utf8",
+#         "store_empty": False,
+#         "fields": None,
 #     },
 # }
 

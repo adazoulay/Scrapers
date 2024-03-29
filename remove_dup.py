@@ -2,7 +2,7 @@ import os
 import json
 
 
-def remove_dups(filename, output_filename=None):
+def remove_dups(filename):
     filepath = os.path.join("JSON", filename)
 
     try:
@@ -31,10 +31,9 @@ def remove_dups(filename, output_filename=None):
         print(f"Error writing to file {output_filepath}: {e}")
 
 
-remove_dups("loblaws.json")
 remove_dups("metro.json")
-remove_dups("uber_eats.json")
-remove_dups("walmart.json")
+# remove_dups("loblaws.json")
+# remove_dups("walmart.json")
 
 
 def combine_and_deduplicate_json(file_path1, file_path2, output_file_path):
@@ -71,11 +70,7 @@ def combine_and_deduplicate_json(file_path1, file_path2, output_file_path):
 
 
 # combine_and_deduplicate_json(
-#     "JSON/instacart_MR2.json", "JSON/instacart_T1.json", "instacart_merged.json"
-# )
-
-# combine_and_deduplicate_json(
-#     "JSON_NO_DUPS/instacart_MR2_NO_DUPS.json",
-#     "JSON_NO_DUPS/instacart_T1_NO_DUPS.json",
-#     "JSON_NO_DUPS/instacart_merged2.json",
+#     "JSON/uber_eats_MR.json",
+#     "JSON/uber_eats_T.json",
+#     "JSON_NO_DUPS/uber_eats_merged.json",
 # )

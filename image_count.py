@@ -32,3 +32,5 @@ def count_image_urls(directory):
 
 
 count_image_urls("JSON_NO_DUPS")
+# count_image_urls("JSON")
+# count_image_urls("JSON_V1/JSON_NO_DUPS")

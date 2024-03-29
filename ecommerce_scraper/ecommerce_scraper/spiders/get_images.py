@@ -27,7 +27,7 @@ class ImageSpider(scrapy.Spider):
 
     def start_requests(self):
         try:
-            with open("../JSON/metro.json", "r") as file:
+            with open("../JSON/metro.json", "r") as file:  #! Change here
                 data = json.load(file)
         except Exception as e:
             self.logger.error(f"Error reading JSON file: {e}")

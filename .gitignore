@@ -3,3 +3,7 @@ JSON*/
 .venv/
 __pycache__/
 .DS_Store
+
+
+CSV*/
+logs.txt

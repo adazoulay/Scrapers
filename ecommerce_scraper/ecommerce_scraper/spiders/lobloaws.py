@@ -1,10 +1,11 @@
 import scrapy
 from scrapy_playwright.page import PageMethod
-from ecommerce_scraper.items import ProductItem
+from ecommerce_scraper.items import ProductItemExpanded
 
 
-#! To get json out of this:
+#! Notes
 # - scrapy crawl loblaws12 -o loblaws.json
+# - Dissable proxy
 
 
 class LoblawsSpider(scrapy.Spider):
@@ -12,10 +13,19 @@ class LoblawsSpider(scrapy.Spider):
     start_urls = ["https://www.loblaws.ca/search?search-bar=Oikos"]
 
     custom_settings = {
-        "PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT": 100000,
-        # "DOWNLOAD_DELAY": 1,
-        # "ITEM_PIPELINES": {"scrapy.pipelines.images.ImagesPipeline": 1},
-        # "IMAGES_STORE": "saved_images",
+        "DOWNLOAD_DELAY": 2,
+        "CONCURRENT_REQUESTS_PER_DOMAIN": 8,
+        "CONCURRENT_REQUESTS": 8,
+        "DEFAULT_REQUEST_HEADERS": {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+            "Accept-Language": "en-US,en;q=0.9",
+        },
+        # "PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT": 100000,
+        "PLAYWRIGHT_BROWSER_TYPE": "chromium",
+        "PLAYWRIGHT_IGNORE_HTTPS_ERRORS": True,
+        "PLAYWRIGHT_HEADLESS": False,
+        "ROBOTSTXT_OBEY": False,
     }
 
     def start_requests(self):
@@ -89,7 +99,6 @@ class LoblawsSpider(scrapy.Spider):
     async def parse_product(self, response):
         page = response.meta["playwright_page"]
         try:
-            # Wait for the images to load with a specified timeout
             await page.wait_for_selector(
                 ".responsive-image--product-details-page", timeout=10000
             )
@@ -103,9 +112,46 @@ class LoblawsSpider(scrapy.Spider):
                 if src:
                     image_urls_set.add(src)
 
+            product_name_element = await page.query_selector(
+                "h1.product-name__item.product-name__item--name"
+            )
+            product_description_element = await page.query_selector(
+                ".product-description-text__text"
+            )
+
+            category_element = await page.query_selector_all(
+                ".breadcrumbs__list__item a"
+            )
+
+            price_element = await page.query_selector(
+                ".price__value.selling-price-list__item__price.selling-price-list__item__price--now-price__value"
+            )
+
+            product_name = (
+                await product_name_element.inner_text()
+                if product_name_element
+                else "N/A"
+            )
+            product_description = (
+                await product_description_element.inner_text()
+                if product_description_element
+                else "N/A"
+            )
+
+            category_path = "/".join([await el.inner_text() for el in category_element])
+
+            product_price = await price_element.inner_text() if price_element else "N/A"
+
             image_urls_list = list(image_urls_set)
             if image_urls_list:
-                yield ProductItem(pdp_url=response.url, image_urls=image_urls_list)
+                yield ProductItemExpanded(
+                    pdp_url=response.url,
+                    image_urls=image_urls_list,
+                    product_name=product_name,
+                    product_description=product_description,
+                    product_category=category_path,
+                    product_price=product_price,
+                )
             else:
                 self.logger.warning(f"No images found at {response.url}")
         except Exception as e:
