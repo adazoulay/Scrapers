@@ -1,9 +1,11 @@
+from bs4 import BeautifulSoup
 import scrapy
 from scrapy_playwright.page import PageMethod
 from ecommerce_scraper.items import ProductItemExpanded
 import asyncio
 import time
 
+import logging
 
 #! Notes
 # - Dissable proxy
@@ -11,14 +13,8 @@ import time
 
 
 class InstacartSpider(scrapy.Spider):
-
-    name = "instacart12"
-    start_urls = [
-        # TORONTO
-        # "https://www.instacart.ca/store/s?k=oikos&actid=0d3b9bf0-806d-4847-8b5c-37317e1d5f49&search_source=logged_out_home_cross_retailer_search&search_id=9558493a-76cd-4cdb-96a5-95727c66d234&page_view_id=57468446-27c1-5c11-b493-7a8e38218387"
-        # MONTREAL
-        "https://www.instacart.ca/store/s?k=oikos&search_id=801daef9-6b3c-4f8a-8174-3476eef0732f&page_view_id=171d7b8d-1937-5425-9d37-d44bc0225a6e"
-    ]
+    name = "instacart"
+    requires_proxy = False
 
     custom_settings = {
         "DOWNLOAD_DELAY": 4,
@@ -32,9 +28,18 @@ class InstacartSpider(scrapy.Spider):
         "PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT": 100000,
         "PLAYWRIGHT_BROWSER_TYPE": "chromium",
         "PLAYWRIGHT_IGNORE_HTTPS_ERRORS": True,
-        "PLAYWRIGHT_HEADLESS": False,
-        "ROBOTSTXT_OBEY": False,
+        #! Proxy
+        "SCRAPEOPS_PROXY_ENABLED": False,
     }
+
+    def __init__(self, brand_name=None, *args, **kwargs):
+        logging.info("IN SPIDER INNIT")
+        super(InstacartSpider, self).__init__(*args, **kwargs)
+        self.brand_name = brand_name
+        self.start_urls = [
+            f"https://www.instacart.ca/store/s?k={brand_name}&actid=0d3b9bf0-806d-4847-8b5c-37317e1d5f49&search_source=logged_out_home_cross_retailer_search&search_id=9558493a-76cd-4cdb-96a5-95727c66d234&page_view_id=57468446-27c1-5c11-b493-7a8e38218387",
+            f"https://www.instacart.ca/store/s?k={brand_name}&search_id=801daef9-6b3c-4f8a-8174-3476eef0732f&page_view_id=171d7b8d-1937-5425-9d37-d44bc0225a6e",
+        ]
 
     def start_requests(self):
         for url in self.start_urls:
@@ -45,7 +50,7 @@ class InstacartSpider(scrapy.Spider):
                     "playwright": True,
                     "playwright_include_page": True,
                     "playwright_page_methods": [
-                        PageMethod("wait_for_selector", ".e-3bd33f"),
+                        # PageMethod("wait_for_selector", ".e-3bd33f"),
                     ],
                 },
             )
@@ -53,89 +58,136 @@ class InstacartSpider(scrapy.Spider):
     async def parse(self, response):
         try:
             page = response.meta["playwright_page"]
-            vendor_link = await find_element_with_retry(page, ".e-3bd33f")
 
-            urls = [await link.get_attribute("href") for link in vendor_link]
+            await page.wait_for_timeout(5000)
 
-            for url in urls:
+            page_content = await page.content()
+            soup = BeautifulSoup(page_content, "html.parser")
+
+            vendor_links = soup.select("div[id='store-wrapper'] li a")
+            print(f"Number of vendor URLs: {len(vendor_links)}")
+
+            for link in vendor_links:
+
+                first_spans_texts = [
+                    div.find("span").text
+                    for div in link.find_all("div", recursive=False)
+                    if div.find("span")
+                ]
+                sub_vendor = (
+                    first_spans_texts[0] if first_spans_texts else "Unknown Subvendor"
+                )
+
+                print(f"Sub-vendor name: {sub_vendor}")
+
+                url = link.get("href")
+                full_url = response.urljoin(url)
+                print(f"yielding: {full_url}")
                 yield scrapy.Request(
-                    url=response.urljoin(url),
-                    callback=self.parse_pdp,
+                    url=full_url,
+                    callback=self.parse_vendor,
                     meta={
                         "playwright": True,
                         "playwright_include_page": True,
+                        "sub_vendor": sub_vendor,
                     },
                 )
+
         except Exception as e:
             print(f"Error processing {response.url}: {e}")
         finally:
             await page.close()
 
-    async def parse_pdp(self, response):
+    async def parse_vendor(self, response):
         try:
             page = response.meta["playwright_page"]
-
+            sub_vendor = response.meta["sub_vendor"]
+            print("In parse_vendor")
             await page.wait_for_timeout(5000)
 
-            pdp_links = await page.query_selector_all(
-                "div[aria-label='Product'][role='group'] a"
-            )
-            urls = [await link.get_attribute("href") for link in pdp_links]
+            page_content = await page.content()
+            soup = BeautifulSoup(page_content, "html.parser")
 
-            for url in urls:
-                if url and "oikos" in url.lower():
-                    full_url = response.urljoin(url)
-                    yield scrapy.Request(
-                        url=full_url,
-                        callback=self.parse_product,
-                        meta={
-                            "playwright": True,
-                            "playwright_include_page": True,
-                            "playwright_page_methods": [
-                                PageMethod("wait_for_selector", ".e-ggkabs"),
-                            ],
-                        },
-                    )
+            product_containers = soup.find_all(
+                "div", attrs={"aria-label": "Product", "role": "group"}
+            )
+            print(f"Subvendor and len urls: {sub_vendor} : {len(product_containers)}")
+
+            for product in product_containers:
+                spans = product.find_all("span")
+                span_texts = [span.text.lower() for span in spans if span.text]
+
+                if any(self.brand_name.lower() in text for text in span_texts):
+                    print("Brand in text")
+                    product_link = product.find("a", role="button")
+
+                    if product_link and product_link.has_attr("href"):
+                        url = product_link["href"]
+                        full_url = response.urljoin(url)
+                        yield scrapy.Request(
+                            url=full_url,
+                            callback=self.parse_product,
+                            meta={
+                                "playwright": True,
+                                "playwright_include_page": True,
+                                "vendor_name": sub_vendor,
+                            },
+                        )
+                else:
+                    vendor_text = " ".join(span_texts)
+                    print(f"Brand NOT in text: {vendor_text}")
+
         except Exception as e:
             print(f"Error processing {response.url}: {e}")
         finally:
             await page.close()
 
     async def parse_product(self, response):
+        print("Parsing Product")
         page = response.meta["playwright_page"]
-
+        sub_vendor = response.meta["vendor_name"]
         try:
-            print("=== 1")
+            print("Parsing Product In try")
+            timeout = 9000
             await page.wait_for_timeout(5000)
-            # print("=== 2")
-            await wait_for_cloudflare(page)
-            # print("=== 3")
             await page.wait_for_timeout(5000)
-            # print("=== 4")
 
-            selectors = [".e-ggkabs", ".e-2szg1"]
-            found = False
-            for selector in selectors:
+            #! List of selectors for name elements
+            name_selectors = [
+                "div[id='item_details'] div div h2 span",
+            ]
+
+            name_element = None
+            for selector in name_selectors:
                 try:
-                    # print("=== 5")
-                    await page.wait_for_selector(selector, timeout=5000)
-                    # print("=== 6")
-                    found = True
-                    break
+                    await page.wait_for_selector(selector, timeout=timeout)
+                    name_element = await page.query_selector(
+                        selector
+                    )  #! Maybe query_all?
+                    if name_element:
+                        break
                 except Exception as e:
-                    print(f"Selector {selector} not found, trying next. Error: {e}")
+                    print(f"Error while waiting for name selector {selector}: {e}")
+                    # input("GET SELECTOR: Name")
 
-            if not found:
-                print(f"No valid selectors found for URL: {response.url}")
-                return
-            # print("=== 7")
+            product_name = await name_element.inner_text() if name_element else "N/A"
+
+            print(f"product name: {product_name}")
+
+            #! List of selectors for image elements
+            selectors = [
+                "li button img",
+                "div.ic-image-zoomer img",
+                "div[role='button'] picture img",
+            ]
+
             image_urls_set = set()
 
             for selector in selectors:
                 try:
-                    # print("=== 8")
-                    image_elements = await page.query_selector_all(f"{selector} img")
-                    # print("=== 9")
+                    await page.wait_for_selector(selector, timeout=timeout)
+                    image_elements = await page.query_selector_all(selector)
+
                     for img in image_elements:
                         src = await img.get_attribute("src")
                         if src:
@@ -144,39 +196,54 @@ class InstacartSpider(scrapy.Spider):
                         break
                 except Exception as e:
                     print(f"Failed to fetch images with {selector}. Error: {e}")
+                    # input("INSPECT IMG SELECTOR")
 
-            description_elements = await page.query_selector_all(
-                ".e-1ojw7mr .e-6r4ux .e-1d3w5wq .e-cb2dhl"
-            )
+            #! List of selectors for description elements
+            description_selectors = [
+                "div[tabindex='-1']  h2 + div p",
+            ]
 
-            # print("=== 10")
-            product_name_element = await page.query_selector(".e-1m4wtaz")
-            # print("=== 11")
+            description_elements = []
+            for selector in description_selectors:
+                try:
+                    await page.wait_for_selector(selector, timeout=timeout)
+                    description_elements = await page.query_selector_all(selector)
+                    if description_elements:
+                        break
+                except Exception as e:
+                    print(
+                        f"Error while waiting for description selector {selector}: {e}"
+                    )
+                    # input("GET SELECTOR: Description")
 
-            price_element = await page.query_selector(".e-1fiwmt0")
-            # print("=== 12")
+            product_description = ""
+            for element in description_elements:
+                product_description += await element.inner_text() + "\n"
 
-            product_name = (
-                await product_name_element.inner_text()
-                if product_name_element
-                else "N/A"
-            )
-            # print("=== 13")
+            #! List of selectors for price elements
+            price_selectors = ["div[id='item_details'] div[data-radium='true']  span"]
+
+            price_element = None
+            for selector in price_selectors:
+                try:
+                    await page.wait_for_selector(selector, timeout=timeout)
+                    price_element = await page.query_selector(
+                        selector
+                    )  #! Maybe query_all?
+                    if price_element:
+                        break
+                except Exception as e:
+                    print(f"Error while waiting for price selector {selector}: {e}")
+                    # input("GET SELECTOR: Price")
 
             product_price = await price_element.inner_text() if price_element else "N/A"
 
-            product_description_parts = []
-            # Loop through the selected elements and extract the text content
-            for element in description_elements:
-                text = await element.inner_text()
-                product_description_parts.append(text)
-
-            product_description = " ".join(product_description_parts)
-            # print("=== 14")
-
             if image_urls_set:
-                print("=== 15")
+                print("Success!")
                 yield ProductItemExpanded(
+                    vendor="instacart",
+                    sub_vendor=sub_vendor,
+                    product_brand=self.brand_name,
                     pdp_url=response.url,
                     image_urls=list(image_urls_set),
                     product_name=product_name,
@@ -193,32 +260,17 @@ class InstacartSpider(scrapy.Spider):
             await page.close()
 
 
-async def find_element_with_retry(page, selector, retries=3, delay=5):
-    for attempt in range(retries):
-        try:
-            await page.wait_for_selector(selector, state="attached", timeout=5000)
-            # print("FOUND 1")
-            return await page.query_selector_all(selector)
-        except Exception as e:
-            print(f"Attempt {attempt + 1}: Selector not found, retrying...")
-            await page.wait_for_timeout(5000)
-
-    print("NOT FOUND 1 after retries")
-    input("INSPECT ELEMENT")
-    return None
-
-
-async def wait_for_cloudflare(page, timeout=300):
-    # print("==== IN CLOUDFLARE")
-    start_time = time.time()
-    while True:
-        if time.time() - start_time > timeout:
-            raise TimeoutError(
-                "Timed out waiting for Cloudflare challenge to disappear."
-            )
-        challenge_element = await page.query_selector(".challenge-running")
-        if challenge_element is None:
-            # print("Cloudflare challenge is no longer detected.")
-            break
-        print("Waiting for Cloudflare challenge to be resolved...")
-        await asyncio.sleep(5)
+# async def wait_for_cloudflare(page, timeout=300):
+#     # print("==== IN CLOUDFLARE")
+#     start_time = time.time()
+#     while True:
+#         if time.time() - start_time > timeout:
+#             raise TimeoutError(
+#                 "Timed out waiting for Cloudflare challenge to disappear."
+#             )
+#         challenge_element = await page.query_selector(".challenge-running")
+#         if challenge_element is None:
+#             # print("Cloudflare challenge is no longer detected.")
+#             break
+#         print("Waiting for Cloudflare challenge to be resolved...")
+#         await asyncio.sleep(5)

@@ -1,16 +1,16 @@
 import scrapy
 from scrapy_playwright.page import PageMethod
 from ecommerce_scraper.items import ProductItemExpanded
-
+import os
 
 #! Notes
-# - scrapy crawl loblaws12 -o loblaws.json
+# - scrapy crawl loblaws -o loblaws.json
 # - Dissable proxy
 
 
 class LoblawsSpider(scrapy.Spider):
-    name = "loblaws20"
-    start_urls = ["https://www.loblaws.ca/search?search-bar=Oikos"]
+    name = "loblaws"
+    requires_proxy = False
 
     custom_settings = {
         "DOWNLOAD_DELAY": 2,
@@ -24,9 +24,15 @@ class LoblawsSpider(scrapy.Spider):
         # "PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT": 100000,
         "PLAYWRIGHT_BROWSER_TYPE": "chromium",
         "PLAYWRIGHT_IGNORE_HTTPS_ERRORS": True,
-        "PLAYWRIGHT_HEADLESS": False,
-        "ROBOTSTXT_OBEY": False,
+        "PLAYWRIGHT_HEADLESS": True,
+        #! Proxy
+        "SCRAPEOPS_PROXY_ENABLED": False,
     }
+
+    def __init__(self, brand_name=None, *args, **kwargs):
+        super(LoblawsSpider, self).__init__(*args, **kwargs)
+        self.brand_name = brand_name
+        self.start_urls = [f"https://www.loblaws.ca/search?search-bar={brand_name}"]
 
     def start_requests(self):
         for url in self.start_urls:
@@ -145,6 +151,9 @@ class LoblawsSpider(scrapy.Spider):
             image_urls_list = list(image_urls_set)
             if image_urls_list:
                 yield ProductItemExpanded(
+                    vendor="loblaws",
+                    sub_vendor="N/A",
+                    product_brand=self.brand_name,
                     pdp_url=response.url,
                     image_urls=image_urls_list,
                     product_name=product_name,

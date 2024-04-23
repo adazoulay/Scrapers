@@ -1,8 +1,11 @@
 import os
 import json
 
+script_dir = os.path.dirname(os.path.abspath(__file__))
 
-def count_image_urls(directory):
+
+def count_image_urls(relative_directory):
+    directory = os.path.join(script_dir, relative_directory)
     if not os.path.exists(directory):
         print(f"Directory '{directory}' does not exist.")
         return
@@ -31,6 +34,6 @@ def count_image_urls(directory):
     print(f"Total images: {total}")
 
 
-count_image_urls("JSON_NO_DUPS")
+count_image_urls("../JSON/")
 # count_image_urls("JSON")
 # count_image_urls("JSON_V1/JSON_NO_DUPS")

@@ -1,12 +1,11 @@
 BOT_NAME = "ecommerce_scraper"
-
 SPIDER_MODULES = ["ecommerce_scraper.spiders"]
 NEWSPIDER_MODULE = "ecommerce_scraper.spiders"
 
-ROBOTSTXT_OBEY = True
+
+ROBOTSTXT_OBEY = False
 REQUEST_FINGERPRINTER_IMPLEMENTATION = "2.7"
 FEED_EXPORT_ENCODING = "utf-8"
-
 
 #! Cache
 HTTPCACHE_ENABLED = False
@@ -35,23 +34,23 @@ LOG_LEVEL = "DEBUG"
 # IMAGES_STORE = "saved_images"
 
 #! JSON Data
-# FEEDS = {
-#     "products.json": {
-#         "format": "json",
-#         "encoding": "utf8",
-#         "indent": 4,
-#     },
-# }
+FEEDS = {
+    "image_scrape.json": {
+        "format": "json",
+        "encoding": "utf8",
+        "indent": 4,
+    },
+}
 
 # FEEDS = {
-#     "instacart.json": {
+#     "instacart_iogo.json": {
 #         "format": "json",
 #         "encoding": "utf8",
 #         "store_empty": False,
 #         "fields": None,
 #         "indent": 4,
 #     },
-#     "instacart.csv": {
+#     "instacart_iogo.csv": {
 #         "format": "csv",
 #         "encoding": "utf8",
 #         "store_empty": False,
@@ -59,9 +58,18 @@ LOG_LEVEL = "DEBUG"
 #     },
 # }
 
-# ! PROXY
-SCRAPEOPS_API_KEY = "daea12f2-c861-4373-b3da-47c01582e74f"
-SCRAPEOPS_PROXY_ENABLED = True
-DOWNLOADER_MIDDLEWARES = {
-    "scrapeops_scrapy_proxy_sdk.scrapeops_scrapy_proxy_sdk.ScrapeOpsScrapyProxySdk": 725,
-}
+# # ! PROXY
+# SCRAPEOPS_API_KEY = "daea12f2-c861-4373-b3da-47c01582e74f"
+# SCRAPEOPS_PROXY_ENABLED = True
+# DOWNLOADER_MIDDLEWARES = {
+#     "scrapeops_scrapy_proxy_sdk.scrapeops_scrapy_proxy_sdk.ScrapeOpsScrapyProxySdk": 725,
+# }
+# SCRAPEOPS_PROXY_ENABLED = True
+
+
+# # # DOWNLOADER_MIDDLEWARES = {
+# # #     "rotating_proxies.middlewares.RotatingProxyMiddleware": 610,  # 300
+# # #     "rotating_proxies.middlewares.BanDetectionMiddleware": 620,  # 301
+# # # }
+
+# # # ROTATING_PROXY_LIST_PATH = "proxies.txt"

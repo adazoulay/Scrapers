@@ -9,13 +9,11 @@ class EcommerceScraperPipeline:
 
 class CustomImagesPipeline(ImagesPipeline):
     def get_media_requests(self, item, info):
-        return [
-            Request(x, meta={"image_id": item.get("image_id")})
-            for x in item.get("image_urls", [])
-        ]
+        for image_url in item["image_urls"]:
+            yield Request(image_url, meta={"uuid": item["uuid"]})
 
-    def file_path(self, request, response=None, info=None, *, item=None):
-        image_id = request.meta["image_id"]
+    def file_path(self, request, response=None, info=None, item=None):
+        # Use the UUID from the meta as the filename
+        uuid = request.meta["uuid"]
         image_ext = request.url.split(".")[-1]
-        # Assuming image_id includes the original 'id' and index
-        return f"{image_id}.{image_ext}"
+        return f"{uuid}.{image_ext}"

@@ -4,6 +4,9 @@ JSON*/
 __pycache__/
 .DS_Store
 
+*.png
+*.jpeg
+*.jpg
 
 CSV*/
 logs.txt

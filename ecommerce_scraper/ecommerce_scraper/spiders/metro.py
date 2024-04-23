@@ -5,19 +5,16 @@ from ecommerce_scraper.items import ProductItemExpanded
 
 #! Notes
 # - scrapy crawl loblaws12 -o loblaws.json
-# - Dissable proxy
 
 
-class LoblawsSpider(scrapy.Spider):
+class MetroSpider(scrapy.Spider):
     name = "metro"
-    start_urls = [
-        "https://www.metro.ca/epicerie-en-ligne/recherche?freeText=true&filter=Oikos"
-    ]
+    requires_proxy = True
 
     custom_settings = {
-        "DOWNLOAD_DELAY": 2,
-        "CONCURRENT_REQUESTS_PER_DOMAIN": 4,
-        "CONCURRENT_REQUESTS": 4,
+        "DOWNLOAD_DELAY": 3,
+        "CONCURRENT_REQUESTS_PER_DOMAIN": 5,
+        "CONCURRENT_REQUESTS": 5,
         "DEFAULT_REQUEST_HEADERS": {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
@@ -27,8 +24,20 @@ class LoblawsSpider(scrapy.Spider):
         "PLAYWRIGHT_BROWSER_TYPE": "chromium",
         "PLAYWRIGHT_IGNORE_HTTPS_ERRORS": True,
         "PLAYWRIGHT_HEADLESS": False,
-        "ROBOTSTXT_OBEY": False,
+        #! Proxy
+        "SCRAPEOPS_PROXY_ENABLED": True,
+        "DOWNLOADER_MIDDLEWARES": {
+            "scrapeops_scrapy_proxy_sdk.scrapeops_scrapy_proxy_sdk.ScrapeOpsScrapyProxySdk": 725,
+        },
+        "SCRAPEOPS_API_KEY": "daea12f2-c861-4373-b3da-47c01582e74f",
     }
+
+    def __init__(self, brand_name=None, *args, **kwargs):
+        super(MetroSpider, self).__init__(*args, **kwargs)
+        self.brand_name = brand_name
+        self.start_urls = [
+            f"https://www.metro.ca/epicerie-en-ligne/recherche?freeText=true&filter={brand_name}"
+        ]
 
     def start_requests(self):
         for url in self.start_urls:
@@ -47,15 +56,28 @@ class LoblawsSpider(scrapy.Spider):
         page = response.meta["playwright_page"]
         await page.wait_for_timeout(5000)
         try:
-            pdp_links = await page.query_selector_all(".product-details-link")
+            product_containers = await page.query_selector_all(".pt__content")
             urls = []
-            for link in pdp_links:
-                href = await link.get_attribute("href")
-                if href:
-                    full_url = response.urljoin(href)
-                    urls.append(full_url)
+            for container in product_containers:
+                brand_span = await container.query_selector(".head__brand")
+                brand_name = await brand_span.inner_text() if brand_span else ""
+                if brand_name.strip().lower() == self.brand_name.lower():
+                    pdp_links = await container.query_selector_all(
+                        ".product-details-link"
+                    )
+                    for link in pdp_links:
+                        href = await link.get_attribute("href")
+                        full_url = response.urljoin(href)
+                        if href:
+                            urls.append(full_url)
+                        else:
+                            print(f"brand name didn't match for {full_url}")
+                else:
+                    print(
+                        f"Brand names didn't match: {brand_name.strip().lower()} VS { self.brand_name.lower()}"
+                    )
 
-            print(f"========= LEN =========: {len(urls)}")
+            print(f"========= PAGE URLS LEN:  {len(urls)}")
 
             for url in urls:
                 yield scrapy.Request(
@@ -68,13 +90,15 @@ class LoblawsSpider(scrapy.Spider):
                     },
                 )
 
-            next_page_link = await page.query_selector('a[aria-label="Suivant"]')
+            # await page.wait_for_selector("a[aria-label='Suivant']", timeout=5000)
+            next_page_link = await page.query_selector("a[aria-label='Suivant']")
+
             print("========== BEFORE NEXT PAGE")
             if next_page_link:
                 next_page_url = await next_page_link.get_attribute("href")
+                print(f"========== NEXT PAGE URL: {next_page_url}")
                 if next_page_url:
                     full_next_page_url = response.urljoin(next_page_url)
-                    print("Scheduling next page:", full_next_page_url)
                     yield scrapy.Request(
                         url=full_next_page_url,
                         callback=self.parse,
@@ -83,6 +107,9 @@ class LoblawsSpider(scrapy.Spider):
                             "playwright_include_page": True,
                         },
                     )
+            else:
+                # print("No next page")
+                input("Coudn't find next page: INSPECT")
 
         except Exception as e:
             print(f"Error processing {response.url}: {e}")
@@ -91,30 +118,27 @@ class LoblawsSpider(scrapy.Spider):
 
     async def parse_product(self, response):
         page = response.meta["playwright_page"]
-        print("In parse_product")
-        await page.wait_for_timeout(5000)
+        print("Parsing PDP")
+        await page.wait_for_timeout(10000)
         try:
-            timeout = 5000
+            timeout = 7000
             #! Product Name
             name_selectors = [".pi--title"]
             product_name_element = ""
             for selector in name_selectors:
-                print("In for loop")
                 try:
-                    print("1")
                     await page.wait_for_selector(selector, timeout=timeout)
-                    print("2")
                     product_name_element = await page.query_selector(selector)
                     if product_name_element:
                         break
                 except Exception as e:
-                    print(f"Error while waiting for Title selector {selector}: {e}")
-                    input("GET SELECTOR: Name")
+                    print(
+                        f"Error while waiting for Title selector {selector}: {e}, {page.url}"
+                    )
+                    # input("GET SELECTOR: Name")
 
             product_name = (
-                await product_name_element.inner_text()
-                if product_name_element
-                else "N/A"
+                await product_name_element.inner_text() if product_name_element else ""
             )
             print(f"Product name: {product_name}")
 
@@ -128,16 +152,23 @@ class LoblawsSpider(scrapy.Spider):
                     if price_elements:
                         break
                 except Exception as e:
-                    print(f"Error while waiting for price selector {selector}: {e}")
+                    print(
+                        f"Error while waiting for price selector {selector}: {e}, {page.url}"
+                    )
                     # input("GET SELECTOR: Price")
 
-            product_price = (
-                await price_elements.inner_text() if price_elements else "N/A"
-            )
-            print(f"product_price: {product_price}")
+            product_price = await price_elements.inner_text() if price_elements else ""
 
             #! Product Category
-            breadcrumb_elements = await page.query_selector_all(".b--list li")
+            category_selctor = ".b--list li"
+            try:
+                await page.wait_for_selector(category_selctor, timeout=timeout)
+                breadcrumb_elements = await page.query_selector_all(category_selctor)
+            except Exception as e:
+                print(
+                    f"Error while waiting for price selector {selector}: {e}, {page.url}"
+                )
+                # input("GET SELECTOR: Category")
 
             category_path_parts = []
             for element in breadcrumb_elements:
@@ -152,7 +183,7 @@ class LoblawsSpider(scrapy.Spider):
 
                 if text:
                     category_path_parts.append(text)
-            category_path = "/".join(category_path_parts)
+            category_path = "/".join(category_path_parts) if category_path_parts else ""
 
             #! Product Images
             image_elements = await page.query_selector_all("picture#main-img img")
@@ -166,6 +197,9 @@ class LoblawsSpider(scrapy.Spider):
             image_urls_list = list(image_urls_set)
             if image_urls_list:
                 yield ProductItemExpanded(
+                    vendor="metro",
+                    sub_vendor="N/A",
+                    product_brand=self.brand_name,
                     pdp_url=response.url,
                     image_urls=image_urls_list,
                     product_name=product_name,
@@ -174,8 +208,8 @@ class LoblawsSpider(scrapy.Spider):
                     product_price=product_price,
                 )
             else:
-                self.logger.warning(f"No images found at {response.url}")
+                print(f"No images found at {response.url}")
         except Exception as e:
-            self.logger.error(f"Error processing {response.url}: {e}")
+            print(f"Error processing {response.url}: {e}")
         finally:
             await page.close()

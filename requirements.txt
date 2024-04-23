@@ -1,0 +1,6 @@
+Scrapy==2.11.1
+scrapy-playwright==0.0.34
+beautifulsoup4==4.12.3
+scrapeops-scrapy==0.5.4
+scrapeops-scrapy-proxy-sdk==1.0
+scrapy-rotating-proxies==0.6.2

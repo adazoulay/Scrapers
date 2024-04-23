@@ -1,8 +1,6 @@
 import scrapy
 from scrapy_playwright.page import PageMethod
 from ecommerce_scraper.items import ProductItemExpanded
-import asyncio
-import time
 from bs4 import BeautifulSoup
 
 
@@ -12,19 +10,12 @@ from bs4 import BeautifulSoup
 
 
 class UberEatsSpider(scrapy.Spider):
-
     name = "uber_eats"
-    start_urls = [
-        # TORONTO
-        # "https://www.ubereats.com/search?diningMode=DELIVERY&pl=JTdCJTIyYWRkcmVzcyUyMiUzQSUyMkhvdXNlJTIwb24lMjBQYXJsaWFtZW50JTIyJTJDJTIycmVmZXJlbmNlJTIyJTNBJTIyMDdiYzE4ZmYtYmMzMS1iZjcxLTI3MTYtYzY3YzUwZjEzNmJiJTIyJTJDJTIycmVmZXJlbmNlVHlwZSUyMiUzQSUyMnViZXJfcGxhY2VzJTIyJTJDJTIybGF0aXR1ZGUlMjIlM0E0My42NjM1ODM1JTJDJTIybG9uZ2l0dWRlJTIyJTNBLTc5LjM2Nzk1OTklN0Q%3D&q=oikos&sc=SEARCH_BAR&searchType=GLOBAL_SEARCH&vertical=ALL"
-        # MONTREAL
-        "https://www.ubereats.com/search?diningMode=DELIVERY&pl=JTdCJTIyYWRkcmVzcyUyMiUzQSUyMjQ4NzMlMjBBdi4lMjBXZXN0bW91bnQlMjIlMkMlMjJyZWZlcmVuY2UlMjIlM0ElMjJFakUwT0RjeklFRjJMaUJYWlhOMGJXOTFiblFzSUZkbGMzUnRiM1Z1ZEN3Z1VVTWdTRE5aSURGWk1Td2dRMkZ1WVdSaElqRVNMd29VQ2hJSlE4RDZtYWtReVV3UkNLWS1aQnpXTDRVUWlTWXFGQW9TQ1Rsa09RRUhHc2xNRWFKYWstVGRtQzE0JTIyJTJDJTIycmVmZXJlbmNlVHlwZSUyMiUzQSUyMmdvb2dsZV9wbGFjZXMlMjIlMkMlMjJsYXRpdHVkZSUyMiUzQTQ1LjQ4MDg2NzQlMkMlMjJsb25naXR1ZGUlMjIlM0EtNzMuNjEwNzI2MyU3RA%3D%3D&q=oikos&sc=SEARCH_BAR&searchType=GLOBAL_SEARCH&vertical=ALL"
-    ]
-
+    requires_proxy = False
     custom_settings = {
         "DOWNLOAD_DELAY": 2,
         "CONCURRENT_REQUESTS_PER_DOMAIN": 8,
-        "CONCURRENT_REQUESTS": 2,
+        "CONCURRENT_REQUESTS": 4,
         "DEFAULT_REQUEST_HEADERS": {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
@@ -34,8 +25,17 @@ class UberEatsSpider(scrapy.Spider):
         "PLAYWRIGHT_BROWSER_TYPE": "chromium",
         "PLAYWRIGHT_IGNORE_HTTPS_ERRORS": True,
         "PLAYWRIGHT_HEADLESS": False,
-        "ROBOTSTXT_OBEY": False,
+        #! Proxy
+        "SCRAPEOPS_PROXY_ENABLED": False,
     }
+
+    def __init__(self, brand_name=None, *args, **kwargs):
+        super(UberEatsSpider, self).__init__(*args, **kwargs)
+        self.brand_name = brand_name
+        self.start_urls = [
+            f"https://www.ubereats.com/search?diningMode=DELIVERY&pl=JTdCJTIyYWRkcmVzcyUyMiUzQSUyMkhvdXNlJTIwb24lMjBQYXJsaWFtZW50JTIyJTJDJTIycmVmZXJlbmNlJTIyJTNBJTIyMDdiYzE4ZmYtYmMzMS1iZjcxLTI3MTYtYzY3YzUwZjEzNmJiJTIyJTJDJTIycmVmZXJlbmNlVHlwZSUyMiUzQSUyMnViZXJfcGxhY2VzJTIyJTJDJTIybGF0aXR1ZGUlMjIlM0E0My42NjM1ODM1JTJDJTIybG9uZ2l0dWRlJTIyJTNBLTc5LjM2Nzk1OTklN0Q%3D&q={brand_name}&sc=SEARCH_BAR&searchType=GLOBAL_SEARCH&vertical=ALL",
+            f"https://www.ubereats.com/search?diningMode=DELIVERY&pl=JTdCJTIyYWRkcmVzcyUyMiUzQSUyMjQ4NzMlMjBBdi4lMjBXZXN0bW91bnQlMjIlMkMlMjJyZWZlcmVuY2UlMjIlM0ElMjJFakUwT0RjeklFRjJMaUJYWlhOMGJXOTFiblFzSUZkbGMzUnRiM1Z1ZEN3Z1VVTWdTRE5aSURGWk1Td2dRMkZ1WVdSaElqRVNMd29VQ2hJSlE4RDZtYWtReVV3UkNLWS1aQnpXTDRVUWlTWXFGQW9TQ1Rsa09RRUhHc2xNRWFKYWstVGRtQzE0JTIyJTJDJTIycmVmZXJlbmNlVHlwZSUyMiUzQSUyMmdvb2dsZV9wbGFjZXMlMjIlMkMlMjJsYXRpdHVkZSUyMiUzQTQ1LjQ4MDg2NzQlMkMlMjJsb25naXR1ZGUlMjIlM0EtNzMuNjEwNzI2MyU3RA%3D%3D&q={brand_name}&sc=SEARCH_BAR&searchType=GLOBAL_SEARCH&vertical=ALL",
+        ]
 
     def start_requests(self):
         for url in self.start_urls:
@@ -55,12 +55,15 @@ class UberEatsSpider(scrapy.Spider):
             vendor_link = await find_element_with_retry(page, ".ak.bu a")
 
             urls = [await link.get_attribute("href") for link in vendor_link]
+            print(f"========= Number of vendor  URLs Len:  {len(urls)}")
 
             for url in urls:
 
                 base_url = response.urljoin(url)
                 query_separator = "&" if "?" in base_url else "?"
-                full_url = f"{base_url}{query_separator}storeSearchQuery=oikos"
+                full_url = (
+                    f"{base_url}{query_separator}storeSearchQuery={self.brand_name}"
+                )
 
                 yield scrapy.Request(
                     url=full_url,
@@ -81,24 +84,40 @@ class UberEatsSpider(scrapy.Spider):
 
             await page.wait_for_timeout(100000)
 
-            await page.wait_for_selector(".al.eg.cy.d3", state="attached")
-            pdp_links = await page.query_selector_all(".al.eg.cy.d3")
+            page_content = await page.content()
+            soup = BeautifulSoup(page_content, "html.parser")
 
-            urls = [await link.get_attribute("href") for link in pdp_links]
+            links = soup.select('a[tabindex="0"]')
 
-            for url in urls:
-                full_url = response.urljoin(url)
-                yield scrapy.Request(
-                    url=full_url,
-                    callback=self.parse_product,
-                    meta={
-                        "playwright": True,
-                        "playwright_include_page": True,
-                        "playwright_page_methods": [],
-                    },
-                )
+            sub_vendor_element = soup.select_one("h1 span[data-testid='rich-text']")
+            sub_vendor_text = (
+                sub_vendor_element.text if sub_vendor_element else "Unknown Vendor"
+            )
+            print(f"Subvendor and len urls: {sub_vendor_text} : {len(links)}")
+
+            for link in links:
+                spans = link.find_all("span", {"data-testid": "rich-text"})
+                span_texts = [span.text.lower() for span in spans if span.text]
+
+                if any(self.brand_name.lower() in text for text in span_texts):
+                    print("Brand in text")
+                    url = link.get("href")
+                    full_url = response.urljoin(url)
+                    yield scrapy.Request(
+                        url=full_url,
+                        callback=self.parse_product,
+                        meta={
+                            "playwright": True,
+                            "playwright_include_page": True,
+                            "playwright_page_methods": [],
+                            "sub_vendor": sub_vendor_text,
+                        },
+                    )
+                else:
+                    for text in span_texts:
+                        print(f"Brand NOT in text: {text}")
         except Exception as e:
-            print(f"Error processing {response.url}: {e}")
+            self.logger.error(f"Error processing {response.url}: {e}")
         finally:
             await page.close()
 
@@ -106,23 +125,24 @@ class UberEatsSpider(scrapy.Spider):
     async def parse_product(self, response):
         page = response.meta["playwright_page"]
         await page.wait_for_timeout(5000)
+        sub_vendor = response.meta["sub_vendor"]
         try:
             timeout = 5000
             #! Name and Price parent element
             parent_element_html = await page.evaluate(
                 """() => {
-            // Attempt to select the span based on the first structure
-            let target = document.querySelector("div > h2 + h1");
-            if (!target) {
-                // If the first structure isn't found, attempt the second structure
-                target = document.querySelector("div > h2 + h1 + div + span[data-testid='rich-text']");
-            }
-            if (!target) {
-                // If the first structure isn't found, attempt the second structure
-                target = document.querySelector("div > h2 + h1 + span[data-testid='rich-text']");
-            }
-            return target ? target.parentElement.outerHTML : null;
-        }"""
+                // Attempt to select the span based on the first structure
+                let target = document.querySelector("div > h2 + h1");
+                if (!target) {
+                    // If the first structure isn't found, attempt the second structure
+                    target = document.querySelector("div > h2 + h1 + div + span[data-testid='rich-text']");
+                }
+                if (!target) {
+                    // If the first structure isn't found, attempt the second structure
+                    target = document.querySelector("div > h2 + h1 + span[data-testid='rich-text']");
+                }
+                return target ? target.parentElement.outerHTML : null;
+            }"""
             )
 
             if parent_element_html:
@@ -137,8 +157,8 @@ class UberEatsSpider(scrapy.Spider):
             soup = BeautifulSoup(parent_element_html, "html.parser")
 
             product_name = soup.find("h1").text if soup.find("h1") else None
-            if not product_name or "oikos" not in product_name.lower():
-                print("Oikos not on page")
+            if not product_name or self.brand_name not in product_name.lower():
+                print(f"===== SHOUDLN'T HAPPEN: {self.brand_name} not on page")
                 await page.close()
                 return
             spans = soup.find_all("span")
@@ -194,7 +214,10 @@ class UberEatsSpider(scrapy.Spider):
             #! ===== Yeild to create entity =====
             if image_urls_set:
                 yield ProductItemExpanded(
+                    vendor="uber_eats",
+                    sub_vendor=sub_vendor,
                     pdp_url=response.url,
+                    product_brand=self.brand_name,
                     image_urls=list(image_urls_set),
                     product_name=product_name,
                     product_description=product_description,
@@ -203,7 +226,7 @@ class UberEatsSpider(scrapy.Spider):
                 )
             else:
                 print(f"No images found at {response.url}")
-                input("GET SELECTOR")
+                # input("GET SELECTOR")
 
         except Exception as e:
             print(f"Error processing {response.url}: {e}")
