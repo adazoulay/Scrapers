@@ -1,0 +1,77 @@
+services:
+
+  instacart:
+    build:
+      context: .
+      dockerfile: ecommerce_scraper/instacart/Dockerfile
+    container_name: instacart_spider
+    volumes:
+      - ./ecommerce_scraper:/app/ecommerce_scraper
+    ports:
+      - "8081:8080"
+    environment:
+      - SPIDER_NAME=instacart
+      - SCRAPY_SETTINGS_MODULE=ecommerce_scraper.settings.settings_instacart
+      - PYTHONPATH=/app/ecommerce_scraper
+
+
+  loblaws:
+    build:
+      context: .
+      dockerfile: ecommerce_scraper/loblaws/Dockerfile
+    container_name: loblaws_spider
+    volumes:
+      - ./ecommerce_scraper:/app/ecommerce_scraper
+    ports:
+      - "8082:8080"
+    environment:
+      - SPIDER_NAME=loblaws
+      - SCRAPY_SETTINGS_MODULE=ecommerce_scraper.settings.settings_loblaws
+      - PYTHONPATH=/app/ecommerce_scraper
+
+
+
+  metro:
+    build:
+      context: .
+      dockerfile: ecommerce_scraper/metro/Dockerfile
+    container_name: metro_spider
+    volumes:
+      - ./ecommerce_scraper:/app/ecommerce_scraper
+    ports:
+      - "8083:8080"
+    environment:
+      - SPIDER_NAME=metro
+      - SCRAPY_SETTINGS_MODULE=ecommerce_scraper.settings.settings_metro
+      - PYTHONPATH=/app/ecommerce_scraper
+
+
+  uber_eats:
+    build:
+      context: .
+      dockerfile: ecommerce_scraper/uber_eats/Dockerfile
+    container_name: uber_eats_spider
+    volumes:
+      - ./ecommerce_scraper:/app/ecommerce_scraper
+    ports:
+      - "8084:8080"
+    environment:
+      - SPIDER_NAME=uber_eats
+      - SCRAPY_SETTINGS_MODULE=ecommerce_scraper.settings.settings_uber_eats
+      - PYTHONPATH=/app/ecommerce_scraper
+
+
+  walmart:
+    build:
+      context: .
+      dockerfile: ecommerce_scraper/walmart/Dockerfile
+    container_name: walmart_spider
+    volumes:
+      - ./ecommerce_scraper:/app/ecommerce_scraper
+    ports:
+      - "8085:8080"
+    environment:
+      - SPIDER_NAME=walmart
+      - SCRAPY_SETTINGS_MODULE=ecommerce_scraper.settings.settings_walmart
+      - PYTHONPATH=/app/ecommerce_scraper
+

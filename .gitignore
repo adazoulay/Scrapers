@@ -1,6 +1,5 @@
 */saved_images/
 JSON*/
-.venv/
 __pycache__/
 .DS_Store
 
@@ -11,3 +10,6 @@ __pycache__/
 
 CSV*/
 logs.txt
+
+.env
+.venv/
