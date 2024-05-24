@@ -35,6 +35,8 @@ class LoblawsSpider(scrapy.Spider):
         self.start_urls = [f"https://www.loblaws.ca/search?search-bar={brand_name}"]
 
     def start_requests(self):
+        for key, attribute in self.settings.attributes.items():
+            print(f"{key}: {attribute.value}")
         for url in self.start_urls:
             yield scrapy.Request(
                 url=url,
@@ -82,7 +84,7 @@ class LoblawsSpider(scrapy.Spider):
                 full_url = response.urljoin(href)
                 urls.append(full_url)
 
-        print(f"========= LEN =========: {len(urls)}")
+        print(f"========= PAGE URLS LEN:  {len(urls)}")
 
         for url in urls:
             yield scrapy.Request(

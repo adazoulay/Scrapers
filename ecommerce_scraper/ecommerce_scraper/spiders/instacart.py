@@ -42,6 +42,9 @@ class InstacartSpider(scrapy.Spider):
         ]
 
     def start_requests(self):
+        for key, attribute in self.settings.attributes.items():
+            print(f"{key}: {attribute.value}")
+
         for url in self.start_urls:
             yield scrapy.Request(
                 url=url,

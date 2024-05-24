@@ -38,6 +38,7 @@ class UberEatsSpider(scrapy.Spider):
         ]
 
     def start_requests(self):
+        print(f"!== Existing settings uber: {self.settings.attributes}")
         for url in self.start_urls:
             yield scrapy.Request(
                 url=url,
@@ -55,7 +56,7 @@ class UberEatsSpider(scrapy.Spider):
             vendor_link = await find_element_with_retry(page, ".ak.bu a")
 
             urls = [await link.get_attribute("href") for link in vendor_link]
-            print(f"========= Number of vendor  URLs Len:  {len(urls)}")
+            print(f"========= Number of vendor URLs:  {len(urls)}")
 
             for url in urls:
 
@@ -149,7 +150,7 @@ class UberEatsSpider(scrapy.Spider):
                 print("Great success!")
             else:
                 print("Coundn't find parent")
-
+                input("INSPECT ELEMENT")
                 await page.close()
                 return
 

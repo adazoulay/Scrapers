@@ -59,6 +59,7 @@ class WalmartSpider(scrapy.Spider):
             )
 
     def start_requests(self):
+        print(f"!== Existing settings walmart: {self.settings.attributes}")
         for url in self.start_urls:
             yield scrapy.Request(
                 url=url,
@@ -147,6 +148,7 @@ class WalmartSpider(scrapy.Spider):
 
             image_urls_list = list(image_urls_set)
             if image_urls_list:
+                print("Success!")
                 yield ProductItemExpanded(
                     vendor="walmart",
                     sub_vendor="N/A",
@@ -159,7 +161,7 @@ class WalmartSpider(scrapy.Spider):
                     product_price=product_price,
                 )
             else:
-                self.logger.warning(f"No images found at {response.url}")
+                print("Fail")
         except Exception as e:
             self.logger.error(f"Error processing {response.url}: {e}")
         finally:
