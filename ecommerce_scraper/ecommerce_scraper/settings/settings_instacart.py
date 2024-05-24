@@ -1,3 +1,5 @@
+from pathlib import Path
+
 BOT_NAME = "ecommerce_scraper_instacart"
 SPIDER_MODULES = ["ecommerce_scraper.spiders"]
 NEWSPIDER_MODULE = "ecommerce_scraper.spiders"
@@ -22,14 +24,20 @@ PLAYWRIGHT_BROWSER_TYPE = "chromium"
 PLAYWRIGHT_LAUNCH_OPTIONS = {"headless": True}
 
 #! LOGS
+log_dir = Path("/app/logs")
+log_dir.mkdir(parents=True, exist_ok=True)
+
+LOG_FILE = log_dir / "instacart.log"  
 LOG_ENABLED = True
-LOG_FILE = "instacart.log"
 LOG_LEVEL = "DEBUG"
 
 
 #! JSON Data
+output_dir = Path("/app/data")
+output_dir.mkdir(parents=True, exist_ok=True)
+
 FEEDS = {
-    "instacart.json": {
+    str(output_dir / "instacart.json"): {
         "format": "json",
         "encoding": "utf8",
         "indent": 4,

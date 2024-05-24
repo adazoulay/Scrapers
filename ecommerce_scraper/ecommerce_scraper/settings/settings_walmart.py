@@ -1,3 +1,5 @@
+from pathlib import Path
+
 BOT_NAME = "ecommerce_scraper"
 SPIDER_MODULES = ["ecommerce_scraper.spiders"]
 NEWSPIDER_MODULE = "ecommerce_scraper.spiders"
@@ -22,14 +24,20 @@ PLAYWRIGHT_BROWSER_TYPE = "chromium"
 PLAYWRIGHT_LAUNCH_OPTIONS = {"headless": True}
 
 #! LOGS
+log_dir = Path("/app/logs")
+log_dir.mkdir(parents=True, exist_ok=True)
+
+LOG_FILE = log_dir / "walmart.log"  
 LOG_ENABLED = True
-LOG_FILE = "walmart.log"
 LOG_LEVEL = "DEBUG"
 
 
 #! JSON Data
+output_dir = Path("/app/data")
+output_dir.mkdir(parents=True, exist_ok=True)
+
 FEEDS = {
-    "walmart.json": {
+    str(output_dir / "walmart.json"): {
         "format": "json",
         "encoding": "utf8",
         "indent": 4,
