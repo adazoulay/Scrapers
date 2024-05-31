@@ -1,5 +1,28 @@
 services:
 
+  fastapi:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: fastapi_service
+    volumes:
+      - ./api:/app
+      - ./ecommerce_scraper:/app/ecommerce_scraper
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8000:8000"
+    environment:
+    - PYTHONPATH=/app/ecommerce_scraper
+    depends_on:
+      - instacart
+      - loblaws
+      - metro
+      - uber_eats
+      - walmart
+    privileged: true
+
   instacart:
     build:
       context: .
@@ -15,6 +38,7 @@ services:
       - SPIDER_NAME=instacart
       - SCRAPY_SETTINGS_MODULE=ecommerce_scraper.settings.settings_instacart
       - PYTHONPATH=/app/ecommerce_scraper
+    tty: true
 
 
   loblaws:
@@ -32,6 +56,7 @@ services:
       - SPIDER_NAME=loblaws
       - SCRAPY_SETTINGS_MODULE=ecommerce_scraper.settings.settings_loblaws
       - PYTHONPATH=/app/ecommerce_scraper
+    tty: true
 
 
 
@@ -50,6 +75,7 @@ services:
       - SPIDER_NAME=metro
       - SCRAPY_SETTINGS_MODULE=ecommerce_scraper.settings.settings_metro
       - PYTHONPATH=/app/ecommerce_scraper
+    tty: true
 
 
   uber_eats:
@@ -67,6 +93,7 @@ services:
       - SPIDER_NAME=uber_eats
       - SCRAPY_SETTINGS_MODULE=ecommerce_scraper.settings.settings_uber_eats
       - PYTHONPATH=/app/ecommerce_scraper
+    tty: true
 
 
   walmart:
@@ -84,4 +111,5 @@ services:
       - SPIDER_NAME=walmart
       - SCRAPY_SETTINGS_MODULE=ecommerce_scraper.settings.settings_walmart
       - PYTHONPATH=/app/ecommerce_scraper
+    tty: true
 

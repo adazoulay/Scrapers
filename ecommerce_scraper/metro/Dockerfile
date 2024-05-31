@@ -12,9 +12,8 @@ RUN playwright install-deps
 
 WORKDIR /app/ecommerce_scraper/ecommerce_scraper
 
-COPY ecommerce_scraper/metro/entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+ENV SCRAPY_SETTINGS_MODULE=ecommerce_scraper.settings.settings_metro
 
 EXPOSE 8080
 
-CMD ["/app/entrypoint.sh"]
+CMD ["tail", "-f", "/dev/null"]

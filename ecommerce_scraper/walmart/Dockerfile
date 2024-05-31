@@ -1,4 +1,4 @@
-# ecommerce_scraper/walmart/Dockerfile
+# ecommerce_scraper/uber_eats/Dockerfile
 FROM python:3.9-slim
 
 WORKDIR /app
@@ -12,9 +12,8 @@ RUN playwright install-deps
 
 WORKDIR /app/ecommerce_scraper/ecommerce_scraper
 
-COPY ecommerce_scraper/walmart/entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+ENV SCRAPY_SETTINGS_MODULE=ecommerce_scraper.settings.settings_uber_eats
 
 EXPOSE 8080
 
-CMD ["/app/entrypoint.sh"]
+CMD ["tail", "-f", "/dev/null"]
